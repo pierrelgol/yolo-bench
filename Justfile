@@ -17,6 +17,10 @@ venv:
 fetch:
     uv run --with ultralytics python3 src/dataset-fetcher/fetch_coco128.py
 
+# Launch the Qt target labeler.
+label:
+    uv run python3 src/targets-labels/label_targets.py
+
 # Remove Python caches.
 clean:
     find . -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -24,4 +28,4 @@ clean:
 
 # Remove generated artifacts, including the venv and downloaded dataset.
 fclean: clean
-    rm -rf .venv dataset/coco128
+    rm -rf .venv dataset/coco128 dataset/targets dataset/class.txt
