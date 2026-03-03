@@ -21,6 +21,10 @@ fetch:
 label:
     uv run python3 src/targets-labels/label_targets.py
 
+# Build the synthetic target-only augmented dataset.
+augment:
+    uv run python3 src/dataset-augment/augment_with_targets.py
+
 # Remove Python caches.
 clean:
     find . -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -28,4 +32,4 @@ clean:
 
 # Remove generated artifacts, including the venv and downloaded dataset.
 fclean: clean
-    rm -rf .venv dataset/coco128 dataset/targets dataset/class.txt
+    rm -rf .venv dataset/augment dataset/coco128 dataset/targets dataset/class.txt
