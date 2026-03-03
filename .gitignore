@@ -105,6 +105,7 @@ dataset/coco128/
 dataset/class.txt
 dataset/targets/
 wandb/
+.cache/
 yolo26n.pt
 yolo11n.pt
 rtdetr-l.pt

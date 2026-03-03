@@ -109,11 +109,12 @@ rtdetr-bench:
 compare:
     uv run python3 src/benchmark_common/compare_models.py
 
-# Remove Python caches.
+# Remove Python caches and generated artifacts.
 clean:
     find . -type d -name __pycache__ -prune -exec rm -rf {} +
-    rm -rf .mypy_cache .pytest_cache .ruff_cache
+    rm -rf .mypy_cache .pytest_cache .ruff_cache .cache artifacts wandb
 
-# Remove generated artifacts, including the venv and downloaded dataset.
+# Remove all generated artifacts, environments, datasets, and downloaded weights.
 fclean: clean
-    rm -rf .venv artifacts dataset/augment dataset/coco128 dataset/targets dataset/class.txt
+    rm -rf .venv dataset/augment dataset/coco128 dataset/targets dataset/class.txt
+    rm -f yolo26n.pt yolo11n.pt rtdetr-l.pt
