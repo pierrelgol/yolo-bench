@@ -21,6 +21,11 @@ fine tuning benchmark
 - `just yolo11-eval`: evaluate the latest YOLO11 checkpoint
 - `just yolo11-infer`: export YOLO11 to ONNX and run Ultralytics inference
 - `just yolo11-bench`: benchmark the exported YOLO11 runtime
+- `just rtdetr-setup`: prepare the RT-DETR run and remapped dataset
+- `just rtdetr-train`: train RT-DETR Large for the shared benchmark
+- `just rtdetr-eval`: evaluate the latest RT-DETR checkpoint
+- `just rtdetr-infer`: export RT-DETR to ONNX and run Ultralytics inference
+- `just rtdetr-bench`: benchmark the exported RT-DETR runtime
 
 ## Target Labeler
 
@@ -66,12 +71,12 @@ Behavior:
 
 ## Fine-Tune Benchmark
 
-The implemented model packages are `src/finetune-yolo7`, `src/finetune-yolo26`, and `src/finetune-yolo11`.
+The implemented model packages are `src/finetune-yolo7`, `src/finetune-yolo26`, `src/finetune-yolo11`, and `src/finetune-rtdetr`.
 
 They use:
 
 - `dataset/augment` as the shared benchmark dataset
-- `artifacts/yolo7`, `artifacts/yolo26`, and `artifacts/yolo11` for generated run outputs
+- `artifacts/yolo7`, `artifacts/yolo26`, `artifacts/yolo11`, and `artifacts/rtdetr` for generated run outputs
 - W&B project `yolo-bench`
 - 50 epochs with eval every 5 epochs
 - the same canonical metrics and benchmark subset
@@ -96,6 +101,14 @@ The YOLO11 pipeline follows the same file layout and metric contract:
 
 - `setup.py`: validate inputs and build a YOLO11-compatible remapped dataset
 - `train.py`: fine-tune `yolo11n.pt` on the same remapped dataset
+- `eval.py`: run periodic or standalone validation with the same logged metrics
+- `infer.py`: export ONNX and run inference on the shared fixed subset
+- `bench.py`: record the same final ONNX benchmark metrics
+
+The RT-DETR pipeline follows the same file layout and metric contract:
+
+- `setup.py`: validate inputs and build an RT-DETR-compatible remapped dataset
+- `train.py`: fine-tune `rtdetr-l.pt` on the same remapped dataset
 - `eval.py`: run periodic or standalone validation with the same logged metrics
 - `infer.py`: export ONNX and run inference on the shared fixed subset
 - `bench.py`: record the same final ONNX benchmark metrics

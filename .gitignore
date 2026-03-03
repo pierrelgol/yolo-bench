@@ -107,6 +107,7 @@ dataset/targets/
 wandb/
 yolo26n.pt
 yolo11n.pt
+rtdetr-l.pt
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.

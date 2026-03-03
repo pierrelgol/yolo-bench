@@ -27,3 +27,7 @@ YOLO26_WEIGHTS = "yolo26n.pt"
 YOLO11_MODEL_NAME = "yolo11"
 YOLO11_VARIANT = "yolo11n"
 YOLO11_WEIGHTS = "yolo11n.pt"
+
+RTDETR_MODEL_NAME = "rtdetr"
+RTDETR_VARIANT = "rtdetr-l"
+RTDETR_WEIGHTS = "rtdetr-l.pt"

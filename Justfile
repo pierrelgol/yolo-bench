@@ -85,6 +85,26 @@ yolo11-infer:
 yolo11-bench:
     uv run python3 src/finetune-yolo11/bench.py
 
+# Prepare the RT-DETR benchmark run context and remapped dataset.
+rtdetr-setup:
+    uv run python3 src/finetune-rtdetr/setup.py
+
+# Train RT-DETR on the shared benchmark dataset.
+rtdetr-train:
+    uv run python3 src/finetune-rtdetr/train.py
+
+# Evaluate the latest RT-DETR checkpoint.
+rtdetr-eval:
+    uv run python3 src/finetune-rtdetr/eval.py
+
+# Export and run RT-DETR ONNX inference with Ultralytics.
+rtdetr-infer:
+    uv run python3 src/finetune-rtdetr/infer.py
+
+# Benchmark the exported RT-DETR runtime.
+rtdetr-bench:
+    uv run python3 src/finetune-rtdetr/bench.py
+
 # Remove Python caches.
 clean:
     find . -type d -name __pycache__ -prune -exec rm -rf {} +
