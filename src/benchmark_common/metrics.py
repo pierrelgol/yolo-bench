@@ -6,7 +6,9 @@ from pathlib import Path
 CANONICAL_METRICS = [
     "epoch",
     "train/loss",
+    "train/loss_norm",
     "val/loss",
+    "val/loss_norm",
     "val/precision",
     "val/recall",
     "val/map50",
@@ -16,6 +18,9 @@ CANONICAL_METRICS = [
     "bench/infer_latency_ms",
     "bench/infer_throughput_img_s",
     "bench/onnx_file_size_mb",
+    "bench/trt_infer_latency_ms",
+    "bench/trt_infer_throughput_img_s",
+    "bench/trt_engine_size_mb",
     "bench/train_total_sec",
     "bench/eval_total_sec",
 ]

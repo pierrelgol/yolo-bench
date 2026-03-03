@@ -9,23 +9,24 @@ fine tuning benchmark
 - `just yolo7-setup`: prepare the YOLOv7 run and remapped dataset
 - `just yolo7-train`: train YOLOv7 for the shared benchmark
 - `just yolo7-eval`: evaluate the latest YOLOv7 checkpoint
-- `just yolo7-infer`: export YOLOv7 to ONNX and run Ultralytics inference
-- `just yolo7-bench`: benchmark the exported YOLOv7 runtime
+- `just yolo7-infer`: export YOLOv7 to ONNX and TensorRT, then run Ultralytics inference
+- `just yolo7-bench`: benchmark the exported YOLOv7 TensorRT runtime
 - `just yolo26-setup`: prepare the YOLO26 run and remapped dataset
 - `just yolo26-train`: train YOLO26 for the shared benchmark
 - `just yolo26-eval`: evaluate the latest YOLO26 checkpoint
-- `just yolo26-infer`: export YOLO26 to ONNX and run Ultralytics inference
-- `just yolo26-bench`: benchmark the exported YOLO26 runtime
+- `just yolo26-infer`: export YOLO26 to ONNX and TensorRT, then run Ultralytics inference
+- `just yolo26-bench`: benchmark the exported YOLO26 TensorRT runtime
 - `just yolo11-setup`: prepare the YOLO11 run and remapped dataset
 - `just yolo11-train`: train YOLO11 for the shared benchmark
 - `just yolo11-eval`: evaluate the latest YOLO11 checkpoint
-- `just yolo11-infer`: export YOLO11 to ONNX and run Ultralytics inference
-- `just yolo11-bench`: benchmark the exported YOLO11 runtime
+- `just yolo11-infer`: export YOLO11 to ONNX and TensorRT, then run Ultralytics inference
+- `just yolo11-bench`: benchmark the exported YOLO11 TensorRT runtime
 - `just rtdetr-setup`: prepare the RT-DETR run and remapped dataset
 - `just rtdetr-train`: train RT-DETR Large for the shared benchmark
 - `just rtdetr-eval`: evaluate the latest RT-DETR checkpoint
-- `just rtdetr-infer`: export RT-DETR to ONNX and run Ultralytics inference
-- `just rtdetr-bench`: benchmark the exported RT-DETR runtime
+- `just rtdetr-infer`: export RT-DETR to ONNX and TensorRT, then run Ultralytics inference
+- `just rtdetr-bench`: benchmark the exported RT-DETR TensorRT runtime
+- `just compare`: build the latest cross-model comparison table
 
 ## Target Labeler
 
@@ -78,37 +79,38 @@ They use:
 - `dataset/augment` as the shared benchmark dataset
 - `artifacts/yolo7`, `artifacts/yolo26`, `artifacts/yolo11`, and `artifacts/rtdetr` for generated run outputs
 - W&B project `yolo-bench`
-- 50 epochs with eval every 5 epochs
-- the same canonical metrics and benchmark subset
+- 50 epochs with eval tracked every epoch
+- TensorRT FP16 as the final runtime backend
+- the same canonical metrics, normalized loss views, and benchmark subset
 
 The YOLOv7 pipeline is split into:
 
 - `setup.py`: validate inputs and build a YOLOv7-compatible remapped dataset
-- `train.py`: train for 50 epochs with eval every 5 epochs
+- `train.py`: train for 50 epochs with per-epoch metrics and eval tracking
 - `eval.py`: evaluate a checkpoint with the shared metric contract
-- `infer.py`: export ONNX and run Ultralytics inference
-- `bench.py`: record final train/eval/inference benchmark metrics
+- `infer.py`: export ONNX, build a TensorRT engine, and run Ultralytics inference
+- `bench.py`: record final TensorRT benchmark metrics
 
 The YOLO26 pipeline follows the same file layout and metric contract:
 
 - `setup.py`: validate inputs and build a YOLO26-compatible remapped dataset
-- `train.py`: fine-tune `yolo26n.pt` on the same remapped dataset
+- `train.py`: fine-tune `yolo26n.pt` on the same remapped dataset with per-epoch logs
 - `eval.py`: run periodic or standalone validation with the same logged metrics
-- `infer.py`: export ONNX and run inference on the shared fixed subset
-- `bench.py`: record the same final ONNX benchmark metrics
+- `infer.py`: export ONNX, build a TensorRT engine, and run inference on the shared fixed subset
+- `bench.py`: record the same final TensorRT benchmark metrics
 
 The YOLO11 pipeline follows the same file layout and metric contract:
 
 - `setup.py`: validate inputs and build a YOLO11-compatible remapped dataset
-- `train.py`: fine-tune `yolo11n.pt` on the same remapped dataset
+- `train.py`: fine-tune `yolo11n.pt` on the same remapped dataset with per-epoch logs
 - `eval.py`: run periodic or standalone validation with the same logged metrics
-- `infer.py`: export ONNX and run inference on the shared fixed subset
-- `bench.py`: record the same final ONNX benchmark metrics
+- `infer.py`: export ONNX, build a TensorRT engine, and run inference on the shared fixed subset
+- `bench.py`: record the same final TensorRT benchmark metrics
 
 The RT-DETR pipeline follows the same file layout and metric contract:
 
 - `setup.py`: validate inputs and build an RT-DETR-compatible remapped dataset
-- `train.py`: fine-tune `rtdetr-l.pt` on the same remapped dataset
+- `train.py`: fine-tune `rtdetr-l.pt` on the same remapped dataset with per-epoch logs
 - `eval.py`: run periodic or standalone validation with the same logged metrics
-- `infer.py`: export ONNX and run inference on the shared fixed subset
-- `bench.py`: record the same final ONNX benchmark metrics
+- `infer.py`: export ONNX, build a TensorRT engine, and run inference on the shared fixed subset
+- `bench.py`: record the same final TensorRT benchmark metrics

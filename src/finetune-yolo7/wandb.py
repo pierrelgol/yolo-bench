@@ -36,17 +36,33 @@ def init_run(
     run_id: str | None = None,
 ):
     wandb_sdk = _load_wandb_sdk()
-    settings = wandb_sdk.Settings(start_method="thread", console="off")
-    return wandb_sdk.init(
-        project=project,
-        name=run_name,
-        job_type=job_type,
-        id=run_id,
-        resume="allow" if run_id else None,
-        config=config_payload,
-        tags=tags,
-        settings=settings,
-    )
+    settings = wandb_sdk.Settings(console="off")
+    init_kwargs = {
+        "project": project,
+        "name": run_name,
+        "job_type": job_type,
+        "id": run_id,
+        "resume": "allow" if run_id else None,
+        "config": config_payload,
+        "tags": tags,
+        "settings": settings,
+    }
+    try:
+        run = wandb_sdk.init(**init_kwargs)
+    except Exception:
+        if run_id is None:
+            raise
+        init_kwargs["id"] = None
+        init_kwargs["resume"] = None
+        run = wandb_sdk.init(**init_kwargs)
+    define_metrics(run)
+    return run
+
+
+def define_metrics(run) -> None:
+    run.define_metric("epoch")
+    for pattern in ["train/*", "val/*", "time/*"]:
+        run.define_metric(pattern, step_metric="epoch")
 
 
 def log_metrics(run, metrics: dict[str, Any], step: int | None = None) -> None:

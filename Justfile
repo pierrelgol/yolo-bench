@@ -37,11 +37,11 @@ yolo7-train:
 yolo7-eval:
     uv run python3 src/finetune-yolo7/eval.py
 
-# Export and run YOLOv7 ONNX inference with Ultralytics.
+# Export YOLOv7 to ONNX and TensorRT, then run Ultralytics inference.
 yolo7-infer:
     uv run python3 src/finetune-yolo7/infer.py
 
-# Benchmark the exported YOLOv7 runtime.
+# Benchmark the exported YOLOv7 TensorRT runtime.
 yolo7-bench:
     uv run python3 src/finetune-yolo7/bench.py
 
@@ -57,11 +57,11 @@ yolo26-train:
 yolo26-eval:
     uv run python3 src/finetune-yolo26/eval.py
 
-# Export and run YOLO26 ONNX inference with Ultralytics.
+# Export YOLO26 to ONNX and TensorRT, then run Ultralytics inference.
 yolo26-infer:
     uv run python3 src/finetune-yolo26/infer.py
 
-# Benchmark the exported YOLO26 runtime.
+# Benchmark the exported YOLO26 TensorRT runtime.
 yolo26-bench:
     uv run python3 src/finetune-yolo26/bench.py
 
@@ -77,11 +77,11 @@ yolo11-train:
 yolo11-eval:
     uv run python3 src/finetune-yolo11/eval.py
 
-# Export and run YOLO11 ONNX inference with Ultralytics.
+# Export YOLO11 to ONNX and TensorRT, then run Ultralytics inference.
 yolo11-infer:
     uv run python3 src/finetune-yolo11/infer.py
 
-# Benchmark the exported YOLO11 runtime.
+# Benchmark the exported YOLO11 TensorRT runtime.
 yolo11-bench:
     uv run python3 src/finetune-yolo11/bench.py
 
@@ -97,13 +97,17 @@ rtdetr-train:
 rtdetr-eval:
     uv run python3 src/finetune-rtdetr/eval.py
 
-# Export and run RT-DETR ONNX inference with Ultralytics.
+# Export RT-DETR to ONNX and TensorRT, then run Ultralytics inference.
 rtdetr-infer:
     uv run python3 src/finetune-rtdetr/infer.py
 
-# Benchmark the exported RT-DETR runtime.
+# Benchmark the exported RT-DETR TensorRT runtime.
 rtdetr-bench:
     uv run python3 src/finetune-rtdetr/bench.py
+
+# Compare the latest runs across models.
+compare:
+    uv run python3 src/benchmark_common/compare_models.py
 
 # Remove Python caches.
 clean:

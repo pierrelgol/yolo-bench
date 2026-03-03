@@ -77,9 +77,12 @@ def run_native_eval(context: dict, checkpoint: Path, epoch: int, name: str) -> d
     )
     duration = time.perf_counter() - start
     results_dict = results.results_dict
+    val_loss = _lookup_val_loss(context, epoch)
+    base_val_loss = context.get("training", {}).get("history", [{}])[0].get("train_metrics", {}).get("val/loss", 0.0) or val_loss or 1.0
     metrics = {
         "epoch": epoch,
-        "val/loss": _lookup_val_loss(context, epoch),
+        "val/loss": val_loss,
+        "val/loss_norm": val_loss / base_val_loss,
         "val/precision": float(results_dict["metrics/precision(B)"]),
         "val/recall": float(results_dict["metrics/recall(B)"]),
         "val/map50": float(results_dict["metrics/mAP50(B)"]),

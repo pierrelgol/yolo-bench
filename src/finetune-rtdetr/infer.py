@@ -15,6 +15,7 @@ if str(SRC_ROOT) not in sys.path:
 from benchmark_common import config
 from benchmark_common.metrics import write_json
 from benchmark_common.paths import load_latest_run, write_latest_run
+from benchmark_common.runtime import ensure_tensorrt, export_engine_from_onnx, run_ultralytics_inference
 
 
 def _load_local_module(module_name: str, path: Path):
@@ -27,7 +28,7 @@ def _load_local_module(module_name: str, path: Path):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export RT-DETR to ONNX and run Ultralytics inference.")
+    parser = argparse.ArgumentParser(description="Export RT-DETR to ONNX and TensorRT, then run Ultralytics inference.")
     parser.add_argument("--checkpoint", default="best", choices=["best", "last"], help="Checkpoint kind to export.")
     return parser.parse_args()
 
@@ -38,6 +39,7 @@ def ensure_runtime() -> None:
         import ultralytics  # noqa: F401
     except ModuleNotFoundError as exc:
         raise RuntimeError("ONNX and Ultralytics are required for inference/export.") from exc
+    ensure_tensorrt()
     result = subprocess.run(["nvidia-smi"], check=False, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError("NVIDIA GPU is required. nvidia-smi failed.")
@@ -66,32 +68,6 @@ def export_onnx(context: dict, checkpoint: Path) -> Path:
     return final_path
 
 
-def fixed_subset(context: dict) -> list[Path]:
-    val_dir = Path(context["benchmark"]["dataset_root"]) / "images" / "val2017"
-    return sorted(val_dir.glob("*.jpg"))[: context["benchmark"]["subset_size"]]
-
-
-def run_ultralytics_inference(context: dict, onnx_path: Path) -> dict:
-    from ultralytics import YOLO, settings
-
-    settings.update({"wandb": False})
-    subset = fixed_subset(context)
-    model = YOLO(str(onnx_path), task="detect")
-    prediction_summary = []
-    for image_path in subset:
-        results = model.predict(
-            source=str(image_path),
-            device=int(context["benchmark"]["device"]),
-            imgsz=context["benchmark"]["img_size"],
-            verbose=False,
-        )
-        count = 0
-        if results and results[0].boxes is not None:
-            count = len(results[0].boxes)
-        prediction_summary.append({"image": image_path.name, "detections": count})
-    return {"subset": [path.name for path in subset], "predictions": prediction_summary}
-
-
 def main() -> int:
     args = parse_args()
     ensure_runtime()
@@ -99,11 +75,19 @@ def main() -> int:
 
     checkpoint = Path(context["training"][f"{args.checkpoint}_checkpoint"])
     exported_onnx = export_onnx(context, checkpoint)
-    inference_payload = run_ultralytics_inference(context, exported_onnx)
+    engine_path = export_engine_from_onnx(
+        onnx_path=exported_onnx,
+        engine_path=Path(context["paths"]["exports_dir"]) / f"{context['model']['variant']}.engine",
+        img_size=context["benchmark"]["img_size"],
+        half=True,
+    )
+    inference_payload = run_ultralytics_inference(context, engine_path)
     inference_payload.update(
         {
             "checkpoint": str(checkpoint),
+            "onnx_path": str(exported_onnx),
             "patched_onnx": str(exported_onnx),
+            "engine_path": str(engine_path),
         }
     )
     write_json(Path(context["paths"]["infer_dir"]) / "summary.json", inference_payload)
@@ -124,13 +108,14 @@ def main() -> int:
             run,
             {
                 "artifact/onnx": str(exported_onnx),
+                "artifact/engine": str(engine_path),
                 "artifact/checkpoint": str(checkpoint),
             },
         )
         wandb_module.finish_run(run)
 
     write_latest_run(config.RTDETR_MODEL_NAME, context)
-    print(f"ONNX written to {exported_onnx}")
+    print(f"TensorRT engine written to {engine_path}")
     return 0
 
 

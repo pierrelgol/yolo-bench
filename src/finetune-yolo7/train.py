@@ -140,6 +140,8 @@ def main() -> int:
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
     native_weights_dir = Path(context["paths"]["train_dir"]) / "native" / "weights"
     results_file = Path(context["paths"]["train_dir"]) / "native" / "results.txt"
+    base_train_loss = context["training"].get("loss_baseline", {}).get("train/loss")
+    base_val_loss = context["training"].get("loss_baseline", {}).get("val/loss")
 
     completed = int(context["training"].get("completed_epochs", 0))
     for target_epoch in range(completed + config.EVAL_EVERY, args.epochs + 1, config.EVAL_EVERY):
@@ -156,6 +158,10 @@ def main() -> int:
             epoch=target_epoch,
             name="periodic",
         )
+        if base_train_loss is None:
+            base_train_loss = chunk_metrics["train/loss"] or 1.0
+        if base_val_loss is None:
+            base_val_loss = chunk_metrics["val/loss"] or 1.0
 
         last_checkpoint = checkpoints_dir / f"epoch_{target_epoch:03d}_last.pt"
         best_checkpoint = checkpoints_dir / f"epoch_{target_epoch:03d}_best.pt"
@@ -170,20 +176,30 @@ def main() -> int:
         context["training"]["last_checkpoint"] = str(last_checkpoint)
         context["training"]["best_checkpoint"] = str(best_checkpoint if best_checkpoint.exists() else last_checkpoint)
         context["training"]["results_file"] = str(results_file)
+        context["training"]["loss_baseline"] = {"train/loss": base_train_loss, "val/loss": base_val_loss}
         context["training"]["history"].append(
             {
                 "epoch": target_epoch,
                 "train_duration_sec": train_duration,
                 "eval_duration_sec": eval_payload["metrics"]["time/eval_epoch_sec"],
-                "train_metrics": chunk_metrics,
-                "eval_metrics": eval_payload["metrics"],
+                "train_metrics": {
+                    **chunk_metrics,
+                    "train/loss_norm": chunk_metrics["train/loss"] / base_train_loss,
+                    "val/loss_norm": chunk_metrics["val/loss"] / base_val_loss,
+                },
+                "eval_metrics": {
+                    **eval_payload["metrics"],
+                    "val/loss_norm": chunk_metrics["val/loss"] / base_val_loss,
+                },
             }
         )
 
         log_payload = {
             "epoch": target_epoch,
             "train/loss": chunk_metrics["train/loss"],
+            "train/loss_norm": chunk_metrics["train/loss"] / base_train_loss,
             "val/loss": chunk_metrics["val/loss"],
+            "val/loss_norm": chunk_metrics["val/loss"] / base_val_loss,
             "val/precision": eval_payload["metrics"]["val/precision"],
             "val/recall": eval_payload["metrics"]["val/recall"],
             "val/map50": eval_payload["metrics"]["val/map50"],

@@ -131,15 +131,15 @@ def reset_training_outputs(context: dict) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def snapshot_checkpoints(context: dict) -> tuple[Path, Path]:
+def snapshot_checkpoints(context: dict, epochs: int) -> tuple[Path, Path]:
     native_weights_dir = Path(context["paths"]["train_dir"]) / "native" / "weights"
     last_source = native_weights_dir / "last.pt"
     best_source = native_weights_dir / "best.pt"
     if not last_source.exists():
         raise FileNotFoundError(f"Missing Ultralytics last checkpoint: {last_source}")
     checkpoints_dir = Path(context["paths"]["checkpoints_dir"])
-    last_checkpoint = checkpoints_dir / f"epoch_{context['benchmark']['epochs']:03d}_last.pt"
-    best_checkpoint = checkpoints_dir / f"epoch_{context['benchmark']['epochs']:03d}_best.pt"
+    last_checkpoint = checkpoints_dir / f"epoch_{epochs:03d}_last.pt"
+    best_checkpoint = checkpoints_dir / f"epoch_{epochs:03d}_best.pt"
     shutil.copy2(last_source, last_checkpoint)
     if best_source.exists():
         shutil.copy2(best_source, best_checkpoint)
@@ -178,7 +178,9 @@ def main() -> int:
     results_file = Path(context["paths"]["train_dir"]) / "native" / "results.csv"
     train_duration = train_once(context, args.epochs)
     rows = parse_results_rows(results_file)
-    last_checkpoint, best_checkpoint = snapshot_checkpoints(context)
+    last_checkpoint, best_checkpoint = snapshot_checkpoints(context, args.epochs)
+    base_train_loss = rows[0]["train/loss"] or 1.0
+    base_val_loss = rows[0]["val/loss"] or 1.0
 
     context["training"]["completed_epochs"] = args.epochs
     context["training"]["train_total_sec"] = train_duration
@@ -195,6 +197,7 @@ def main() -> int:
         eval_metrics = {
             "epoch": target_epoch,
             "val/loss": row["val/loss"],
+            "val/loss_norm": row["val/loss"] / base_val_loss,
             "val/precision": row["val/precision"],
             "val/recall": row["val/recall"],
             "val/map50": row["val/map50"],
@@ -206,14 +209,20 @@ def main() -> int:
                 "epoch": target_epoch,
                 "train_duration_sec": train_chunk_sec,
                 "eval_duration_sec": 0.0,
-                "train_metrics": row,
+                "train_metrics": {
+                    **row,
+                    "train/loss_norm": row["train/loss"] / base_train_loss,
+                    "val/loss_norm": row["val/loss"] / base_val_loss,
+                },
                 "eval_metrics": eval_metrics,
             }
         )
         log_payload = {
             "epoch": target_epoch,
             "train/loss": row["train/loss"],
+            "train/loss_norm": row["train/loss"] / base_train_loss,
             "val/loss": row["val/loss"],
+            "val/loss_norm": row["val/loss"] / base_val_loss,
             "val/precision": row["val/precision"],
             "val/recall": row["val/recall"],
             "val/map50": row["val/map50"],
@@ -226,6 +235,7 @@ def main() -> int:
     context["training"]["last_eval"] = {
         "epoch": args.epochs,
         "val/loss": rows[-1]["val/loss"],
+        "val/loss_norm": rows[-1]["val/loss"] / base_val_loss,
         "val/precision": rows[-1]["val/precision"],
         "val/recall": rows[-1]["val/recall"],
         "val/map50": rows[-1]["val/map50"],

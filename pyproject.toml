@@ -11,6 +11,7 @@ dependencies = [
     "onnxslim>=0.1.86",
     "pillow>=11.3.0",
     "pyqt6>=6.9.1",
+    "tensorrt>=10.15.1.29",
     "torch>=2.8.0",
     "ultralytics>=8.4.19",
     "wandb>=0.21.0",

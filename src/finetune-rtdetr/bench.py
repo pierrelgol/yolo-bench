@@ -16,6 +16,7 @@ if str(SRC_ROOT) not in sys.path:
 from benchmark_common import config
 from benchmark_common.metrics import write_json
 from benchmark_common.paths import load_latest_run, write_latest_run
+from benchmark_common.runtime import benchmark_ultralytics_runtime, ensure_tensorrt
 
 
 def _load_local_module(module_name: str, path: Path):
@@ -28,8 +29,8 @@ def _load_local_module(module_name: str, path: Path):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Benchmark the exported RT-DETR ONNX runtime.")
-    parser.add_argument("--warmup", type=int, default=3, help="Warmup iterations.")
+    parser = argparse.ArgumentParser(description="Benchmark the exported RT-DETR TensorRT runtime.")
+    parser.add_argument("--warmup", type=int, default=config.BENCHMARK_WARMUP, help="Warmup iterations.")
     return parser.parse_args()
 
 
@@ -40,57 +41,32 @@ def ensure_runtime() -> None:
     try:
         import ultralytics  # noqa: F401
     except ModuleNotFoundError as exc:
-        raise RuntimeError("Ultralytics is required for ONNX benchmarking.") from exc
-
-
-def fixed_subset(context: dict) -> list[Path]:
-    val_dir = Path(context["benchmark"]["dataset_root"]) / "images" / "val2017"
-    return sorted(val_dir.glob("*.jpg"))[: context["benchmark"]["subset_size"]]
+        raise RuntimeError("Ultralytics is required for TensorRT benchmarking.") from exc
+    ensure_tensorrt()
 
 
 def main() -> int:
     args = parse_args()
     ensure_runtime()
     context = load_latest_run(config.RTDETR_MODEL_NAME)
-    onnx_path = Path(context.get("inference", {}).get("patched_onnx", ""))
-    if not onnx_path.exists():
-        raise FileNotFoundError("Missing exported ONNX model. Run rtdetr-infer first.")
+    engine_path = Path(context.get("inference", {}).get("engine_path", ""))
+    onnx_path = Path(context.get("inference", {}).get("onnx_path", ""))
+    if not engine_path.exists():
+        raise FileNotFoundError("Missing TensorRT engine. Run rtdetr-infer first.")
 
-    from ultralytics import YOLO, settings
-
-    settings.update({"wandb": False})
-    subset = fixed_subset(context)
-    model = YOLO(str(onnx_path), task="detect")
-    warmup_source = str(subset[0])
-    for _ in range(args.warmup):
-        model.predict(
-            source=warmup_source,
-            device=int(context["benchmark"]["device"]),
-            imgsz=context["benchmark"]["img_size"],
-            verbose=False,
-        )
-
-    total = 0.0
-    for image_path in subset:
-        start = time.perf_counter()
-        model.predict(
-            source=str(image_path),
-            device=int(context["benchmark"]["device"]),
-            imgsz=context["benchmark"]["img_size"],
-            verbose=False,
-        )
-        total += time.perf_counter() - start
-
-    latency_ms = (total / len(subset)) * 1000.0
-    throughput = len(subset) / total if total > 0 else 0.0
+    bench_runtime = benchmark_ultralytics_runtime(context, engine_path, args.warmup)
     summary = {
-        "bench/infer_latency_ms": latency_ms,
-        "bench/infer_throughput_img_s": throughput,
-        "bench/onnx_file_size_mb": onnx_path.stat().st_size / (1024 * 1024),
+        "bench/infer_latency_ms": bench_runtime["latency_ms"],
+        "bench/infer_throughput_img_s": bench_runtime["throughput_img_s"],
+        "bench/trt_infer_latency_ms": bench_runtime["latency_ms"],
+        "bench/trt_infer_throughput_img_s": bench_runtime["throughput_img_s"],
+        "bench/onnx_file_size_mb": onnx_path.stat().st_size / (1024 * 1024) if onnx_path.exists() else 0.0,
+        "bench/trt_engine_size_mb": engine_path.stat().st_size / (1024 * 1024),
         "bench/train_total_sec": context["training"].get("train_total_sec", 0.0),
         "bench/eval_total_sec": context["training"].get("eval_total_sec", 0.0),
-        "subset": [path.name for path in subset],
+        "subset": bench_runtime["subset"],
         "onnx_path": str(onnx_path),
+        "engine_path": str(engine_path),
     }
     bench_dir = Path(context["paths"]["bench_dir"])
     write_json(bench_dir / "summary.json", summary)

@@ -43,6 +43,17 @@ def ensure_nvidia() -> None:
         raise RuntimeError("NVIDIA GPU is required. nvidia-smi failed.")
 
 
+def _lookup_val_loss(context: dict, epoch: int) -> float:
+    history = context.get("training", {}).get("history", [])
+    if epoch:
+        for item in history:
+            if item.get("epoch") == epoch:
+                return float(item.get("train_metrics", {}).get("val/loss", 0.0))
+    if history:
+        return float(history[-1].get("train_metrics", {}).get("val/loss", 0.0))
+    return 0.0
+
+
 def _parse_eval_stdout(stdout: str) -> dict[str, float]:
     metrics_line = None
     speed_line = None
@@ -109,6 +120,10 @@ def run_native_eval(context: dict, checkpoint: Path, epoch: int, name: str) -> d
     if result.returncode != 0:
         raise RuntimeError(f"YOLOv7 evaluation failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
     metrics = _parse_eval_stdout(result.stdout)
+    val_loss = _lookup_val_loss(context, epoch)
+    base_val_loss = context.get("training", {}).get("loss_baseline", {}).get("val/loss") or val_loss or 1.0
+    metrics["val/loss"] = val_loss
+    metrics["val/loss_norm"] = val_loss / base_val_loss if base_val_loss else 0.0
     metrics["epoch"] = epoch
     metrics["time/eval_epoch_sec"] = duration
     payload = {
@@ -143,7 +158,10 @@ def main() -> int:
             tags=["model:yolo7", "dataset:augment", "stage:eval"],
             run_id=run_id,
         )
-        wandb_module.log_metrics(run, payload["metrics"], step=payload["metrics"]["epoch"] or None)
+        step = payload["metrics"]["epoch"] or None
+        if step is not None and step <= int(context["training"].get("completed_epochs", 0)):
+            step = None
+        wandb_module.log_metrics(run, payload["metrics"], step=step)
         wandb_module.finish_run(run)
 
     write_latest_run(config.YOLO7_MODEL_NAME, context)
